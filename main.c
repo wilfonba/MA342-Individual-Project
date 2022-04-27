@@ -26,16 +26,17 @@ int main(int argc, char** argv) {
     boid boids[opt.N];
     initializePositions(boids,&opt);
 
-    int nSteps = opt.tf/opt.dt - 1;
+    int nSteps = (int)(opt.tf/opt.dt)1;
     double t = 0;
     int frameSteps = opt.frameDt/opt.dt;
-    printFrame(fp,boids,t,&opt);
-    /*for(int i = 0;i < nSteps;i++) {
-        moveBoids(boids,&opt);
+    //printFrame(fp,boids,t,&opt);
+    for(int i = 0;i <= nSteps;i++) {
         if (i%frameSteps == 0) {
             printFrame(fp,boids,t,&opt);
         }
-    }*/
+        moveBoids(boids,&opt);
+        t = t + opt.dt;
+    }
 
     fclose(fp);
     return 0;
