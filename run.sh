@@ -1,1 +1,1 @@
-mpirun -np 4 ./main -N=10 -alpha=10 -beta=75 -r=0.05 -h=2
+./main -N=10 -W=20 -H=20 -separation=10 -separationStrength=10 -alignment=10 -alignmentStrength=10 -cohesion=10 -cohesionStrength=10 -maxV=10 -dt=0.001 -frameDt=1

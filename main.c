@@ -1,47 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h>
 #include <math.h>
+#include <string.h>
+#include <time.h>
 #include <string.h>
 #include "/usr/include/python2.7/Python.h"
 
 #include "helperFuncs.c"
 
-void workerStuff(options* opt) {
-    int a = 1;
-}
-
-
-
-void rootStuff(options* opt) {
-    printOptions(opt);
-    if (opt->visualize == 1) {
-        plotBoundary(opt);
-    }
-}
-
-
+#define PI 3.14159265358979323846
 
 int main(int argc, char** argv) {
+    // Seed RNG
+    srand(987654321);
+
+    // Parse Settings
     options opt;
-    opt.visualize = 0;
     parseOptions(argc,argv,&opt);
 
-    MPI_Init(&argc,&argv);
-    
-    int myRank;
-    int numProcs;
+    FILE* fp;
+    fp = fopen(opt.filename,"w");
+    printOptions(fp,&opt);
 
-    MPI_Comm_size(MPI_COMM_WORLD,&numProcs);
-    MPI_Comm_rank(MPI_COMM_WORLD,&myRank);
-    //printf("My Rank is %2d, numProcs = %d\n",myRank,numProcs);
+    // Initialize Boids
+    boid boids[opt.N];
+    initializePositions(boids,&opt);
 
-    if (myRank == 0) {
-        rootStuff(&opt);
-    } else {
-        workerStuff(&opt);
-    }
+    int nSteps = opt.tf/opt.dt - 1;
+    double t = 0;
+    int frameSteps = opt.frameDt/opt.dt;
+    printFrame(fp,boids,t,&opt);
+    /*for(int i = 0;i < nSteps;i++) {
+        moveBoids(boids,&opt);
+        if (i%frameSteps == 0) {
+            printFrame(fp,boids,t,&opt);
+        }
+    }*/
 
-    MPI_Finalize();
+    fclose(fp);
     return 0;
 }
