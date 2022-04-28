@@ -20,7 +20,6 @@ typedef struct{
     double pY;
 } boid;
 
-
 void parseOptions(int argc,char** argv,options* opt) {
     int tempI;
     char tempS;
@@ -52,7 +51,7 @@ void parseOptions(int argc,char** argv,options* opt) {
     }
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
-    sprintf(opt->filename,"%02d-%02d-%d_%02d-%02d-%02d.out",tm.tm_mon + 1, tm.tm_mday,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(opt->filename,"%02d-%02d-%d_%02d-%02d-%02d.csv",tm.tm_mon + 1, tm.tm_mday,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 void unitVector(double x,double y,double* dir) {
@@ -75,25 +74,26 @@ double vectorNorm(double* x) {
     return sqrt(x[0]*x[0] + x[1]*x[1]);
 }
 
-void boundPosition(boid boidLim,options* opt) {
-    double velocityCorrection = 5.0;
-    if (boidLim.pX < 0) {
-        boidLim.vX = velocityCorrection;
-    } else if (boidLim.pX > opt->W) {
-        boidLim.vX = -velocityCorrection;
-    } else if (boidLim.pY < 0) {
-        boidLim.vY =  velocityCorrection;
-    } else if (boidLim.pY > opt->H) {
-        boidLim.vY = -velocityCorrection;
+void boundPosition(boid* boidLim,options* opt) {
+    double velocityCorrection = 0.3;
+    if (boidLim->pX < 0) {
+        boidLim->vX+=velocityCorrection;
+    } else if (boidLim->pX > opt->W) {
+        boidLim->vX-=velocityCorrection;
+    }
+    if (boidLim->pY < 0) {
+        boidLim->vY+=velocityCorrection;
+    } else if (boidLim->pY > opt->H) {
+        boidLim->vY-=velocityCorrection;
     }
 }
 
-void limitVelocity(boid boidLim,options* opt) {
-    double v[2] = {boidLim.vX,boidLim.vY};
+void limitVelocity(boid* boidLim,options* opt) {
+    double v[2] = {boidLim->vX,boidLim->vY};
     if (vectorNorm(v) > opt->maxV) {
         unitVector(v[0],v[1],v);
-        boidLim.vX = v[0]*opt->maxV;
-        boidLim.vY = v[1]*opt->maxV;
+        boidLim->vX = v[0]*opt->maxV;
+        boidLim->vY = v[1]*opt->maxV;
     }
 }
 
@@ -104,8 +104,8 @@ void initializePositions(boid* boids,options* opt) {
     double velocity;
     double dir[2];
 
-    HScale = opt->H/RAND_MAX;
-    WScale = opt->W/RAND_MAX;
+    HScale = (opt->H)/RAND_MAX;
+    WScale = (opt->W)/RAND_MAX;
     VScale = opt->maxV/RAND_MAX;
 
     for(int i = 0;i < opt->N;i++) {
@@ -153,8 +153,7 @@ void alignment(boid* boids,options* opt,double* vAlignment,int i) {
     }
     v[0]/=(N-1);
     v[1]/=(N-1);
-    vAlignment[0] = v[0]*opt->alignmentStrength;
-    vAlignment[1] = v[1]*opt->alignmentStrength;
+    unitVector(v[0],v[1],v);
 }
 
 void cohesion(boid* boids,options* opt,double* vCohesion,int i) {
@@ -175,14 +174,12 @@ void cohesion(boid* boids,options* opt,double* vCohesion,int i) {
 
     pj[0] = boids[i].pX;
     pj[1] = boids[i].pX;
-
     vectorSubtract(pc,pj,vCohesion);
-    vCohesion[0]*=opt->cohesionStrength;
-    vCohesion[1]*=opt->cohesionStrength;
+    unitVector(vCohesion[0],vCohesion[1],vCohesion);
 }
 
 void separation(boid* boids,options* opt,double* vSeparation,int i) {
-    //printf("In Separation %d\n",i);
+    //  printf("In Separation %d\n",i);
     double c[2] = {0,0};
     double pi[2];
     double pj[2];
@@ -204,17 +201,14 @@ void separation(boid* boids,options* opt,double* vSeparation,int i) {
             }
         }
     }
-    c[0]*=opt->separationStrength;
-    c[1]*=opt->separationStrength;
+    //unitVector(c[0],c[1],c);
     vSeparation[0] = c[0];
     vSeparation[1] = c[1];
 }
 
 void printFrame(FILE* fp,boid* boids, double t,options* opt) {
-    fprintf(fp,"\n\n");
-    fprintf(fp,"t = %f\n",t);
     for(int i = 0;i < opt->N;i++) {
-        fprintf(fp,"%d,%f,%f,%f,%f \n",i,boids[i].vX,boids[i].vY,boids[i].pX,boids[i].pY);
+        fprintf(fp,"%f,%d,%f,%f,%f,%f \n",t,i,boids[i].vX,boids[i].vY,boids[i].pX,boids[i].pY);
     }
 }
 
@@ -225,12 +219,13 @@ void moveBoids(boid* boids,options* opt) {
         alignment(boids,opt,vAlignment,i);
         cohesion(boids,opt,vCohesion,i);
         separation(boids,opt,vSeparation,i);
-        boids[i].vX+=(vAlignment[0] + vCohesion[0] + vSeparation[0]);
-        boids[i].vY+=(vAlignment[1] + vCohesion[1] + vSeparation[1]);
-        boundPosition(boids[i],opt);
-        limitVelocity(boids[i],opt);
+        boids[i].vX+=(opt->alignmentStrength*vAlignment[0] + opt->cohesionStrength*vCohesion[0] + opt->separationStrength*vSeparation[0]);
+        boids[i].vY+=(opt->alignmentStrength*vAlignment[1] + opt->cohesionStrength*vCohesion[1] + opt->separationStrength*vSeparation[1]);
+        limitVelocity(&boids[i],opt);
+        boundPosition(&boids[i],opt);
+        //printf("[%f,%f]\n",boids[i].vX,boids[i].vY);
         boids[i].pX+=(boids[i].vX*opt->dt);
-        boids[i].pY+=(boids[i].vX*opt->dt);
+        boids[i].pY+=(boids[i].vY*opt->dt);
     }  
 }
 
