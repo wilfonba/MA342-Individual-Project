@@ -75,16 +75,17 @@ double vectorNorm(double* x) {
 }
 
 void boundPosition(boid* boidLim,options* opt) {
-    double velocityCorrection = 0.3;
-    if (boidLim->pX < 0) {
-        boidLim->vX+=velocityCorrection;
-    } else if (boidLim->pX > opt->W) {
-        boidLim->vX-=velocityCorrection;
+    double velocityCorrection = 5;
+    double wallThreshold = 2;
+    if (boidLim->pX < wallThreshold) {
+        boidLim->vX=velocityCorrection*(wallThreshold-boidLim->pX+1);
+    } else if (boidLim->pX > opt->W-wallThreshold) {
+        boidLim->vX=velocityCorrection*(boidLim->pX - opt->W - wallThreshold-1);
     }
-    if (boidLim->pY < 0) {
-        boidLim->vY+=velocityCorrection;
-    } else if (boidLim->pY > opt->H) {
-        boidLim->vY-=velocityCorrection;
+    if (boidLim->pY < wallThreshold) {
+        boidLim->vY=velocityCorrection*(wallThreshold-boidLim->pY+1);
+    } else if (boidLim->pY > opt->H-wallThreshold) {
+        boidLim->vY=velocityCorrection*(boidLim->pY - opt->H - wallThreshold-1);
     }
 }
 
@@ -153,7 +154,8 @@ void alignment(boid* boids,options* opt,double* vAlignment,int i) {
     }
     v[0]/=(N-1);
     v[1]/=(N-1);
-    unitVector(v[0],v[1],v);
+    vectorSubtract(v,vi,v);
+    unitVector(v[0],v[1],vAlignment);
 }
 
 void cohesion(boid* boids,options* opt,double* vCohesion,int i) {
@@ -221,8 +223,8 @@ void moveBoids(boid* boids,options* opt) {
         separation(boids,opt,vSeparation,i);
         boids[i].vX+=(opt->alignmentStrength*vAlignment[0] + opt->cohesionStrength*vCohesion[0] + opt->separationStrength*vSeparation[0]);
         boids[i].vY+=(opt->alignmentStrength*vAlignment[1] + opt->cohesionStrength*vCohesion[1] + opt->separationStrength*vSeparation[1]);
-        limitVelocity(&boids[i],opt);
         boundPosition(&boids[i],opt);
+        limitVelocity(&boids[i],opt);
         //printf("[%f,%f]\n",boids[i].vX,boids[i].vY);
         boids[i].pX+=(boids[i].vX*opt->dt);
         boids[i].pY+=(boids[i].vY*opt->dt);
